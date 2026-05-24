@@ -185,3 +185,44 @@
 - 日期时间使用 Python `datetime` + Pydantic 默认序列化，输出标准 ISO-8601
 - 路由层使用 mock 数据，不依赖 DB，当前即可通过 `/api/docs` 测试全部端点
 - `backend/main.py` 已更新，include 了新的 routes 模块
+
+---
+
+## 2026-05-24 — SSE 实时事件推送底座（全栈）
+
+### 后端事件 Schema（`backend/schemas/events.py`）
+
+- 8 种事件类型字面量：`task_start | agent_start | agent_complete | tool_call | tool_result | task_complete | task_failed | heartbeat`
+- 5 种 Agent 名称：`planner | research | analysis | writer | reviewer`
+- 每种事件独立的 Pydantic 模型，`event` 字段用 `Literal` 做 discriminated union
+- `SSEEvent` 联合类型 — `publish()` 的类型安全入参
+- `iso_now()` — UTC ISO-8601 时间戳工厂
+
+### 后端 SSE 路由（`backend/api/routes/events.py`）
+
+- 全局 `_sse_queues: dict[str, asyncio.Queue]` — 零外部依赖，纯内存
+- `ensure_queue(task_id)` — 惰性创建队列（maxsize=256）
+- `publish(task_id, event)` — Agent 节点推送事件，队列满时丢弃 + 警告日志
+- `remove_queue(task_id)` — 任务结束/客户端断开时清理
+- `GET /api/analyze/{task_id}/stream` — SSE StreamingResponse：
+  - `_event_generator` 异步生成器，`asyncio.wait_for(queue.get(), timeout=30)`
+  - 30 秒无事件 → 自动发送 heartbeat
+  - `task_complete` / `task_failed` → 跳出循环 → finally 清理队列
+  - `CancelledError` → 客户端断开 → finally 清理
+  - SSE 格式化 `event: <type>\ndata: <json>\n\n`
+
+### 前端类型（`frontend/types/sse-events.ts`）
+
+- 与后端 Pydantic 逐字段对齐，每个 interface 字段名、类型、可选性严格一致
+- `SSEEventType` 字面量联合、`AgentName` 联合、`ALL_AGENTS` 常量数组
+- `SSEEvent` discriminated union — `event` 字段为判别键
+- `AgentState` / `AgentStateMap` — UI 层状态类型（waiting/running/completed）
+
+### 前端 React Hook（`frontend/hooks/useSSE.ts`）
+
+- `useSSE()` → `{ connect, disconnect, isConnected, taskStatus, agentStates, events, ... }`
+- **Agent 状态机**：agent_start → agent 变为 "running"，agent_complete → "completed"
+- **指数退避重连**：1s → 2s → 4s → ... → 30s 上限，仅 running/idle 状态下重连
+- **Stale-closure 安全**：`handleMessageRef` + `taskStatusRef` 避免 EventSource 回调中的闭包过期
+- **生命周期管理**：unmount 自动断开，disconnect 取消重连计时器
+- 旧 `analysis.ts` 中的 `SSEEvent` 接口已移除，统一使用新类型
