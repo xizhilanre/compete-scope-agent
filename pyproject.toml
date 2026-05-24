@@ -1,0 +1,64 @@
+[project]
+name = "compete-scope"
+version = "0.2.0"
+description = "Enterprise-grade competitive analysis AI Agent platform"
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter (replaces black, isort, flake8)
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["frontend", "node_modules", ".venv", "__pycache__", "alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modern syntax)
+    "ASYNC",  # async/await best practices
+    "BLE",    # blind except
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",  # line-too-long (handled by formatter)
+    "B008",  # do-not-perform-function-calls-in-argument-defaults (FastAPI Depends)
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["backend"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+# Mypy — static type checking
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+explicit_package_bases = true
+namespace_packages = true
+plugins = ["pydantic.mypy"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["backend"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
