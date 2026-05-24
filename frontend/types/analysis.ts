@@ -21,8 +21,3 @@ export interface AnalysisResult {
   competitors: string[];
   report_markdown: string;
 }
-
-export interface SSEEvent {
-  event: string;
-  data: string;
-}
