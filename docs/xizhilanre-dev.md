@@ -114,3 +114,36 @@
 - `docs/sse-events.md` — SSE 事件类型参考（progress, partial, swot, complete, error）
 - `docs/agent-state.md` — Agent 状态机文档（StateGraph schema + 5 node 职责）
 - CI 工作流更新：PostgreSQL service container + mypy backend/ + pytest --cov
+
+---
+
+## 2026-05-24 — 异步数据库层 + Alembic 迁移系统
+
+### 数据库层（SQLAlchemy 2.0 Async）
+
+- `backend/db/database.py` — 核心模块：
+  - `create_async_engine` + `async_sessionmaker`（pool_size=20, pool_pre_ping, pool_recycle）
+  - `Base`（DeclarativeBase）— 所有模型的基类
+  - `get_db()` — FastAPI 异步依赖注入生成器（try/yield/commit/rollback/close）
+- `backend/db/models.py` — 三张表，完全使用 `Mapped`/`mapped_column` 新语法：
+  - **Task** — 分析任务（id: UUID hex 32, target_product, analysis_dimensions JSON, status PENDING/RUNNING/COMPLETED/FAILED, 时间戳, error）
+  - **Report** — 分析报告（id, task_id UNIQUE FK→tasks, markdown_content, structured_data JSON, metric_cards JSON, quality_score, citations_data JSON, token_usage JSON）
+  - **ExecutionLog** — 执行日志（id autoincrement, task_id FK, agent_name, event_type, data JSON, timestamp, duration_ms）
+  - TaskStatus 使用 PostgreSQL 原生 ENUM（`create_type=True`）
+  - relationship 使用 `lazy="selectin"` 避免 N+1
+- `backend/db/session.py` — 重导出层，保持向后兼容
+
+### Alembic 迁移系统
+
+- `backend/alembic.ini` — 基础配置
+- `backend/alembic/env.py` — 异步 env：
+  - 从 `config.Settings` 读取 DATABASE_URL（不依赖 alembic.ini 硬编码）
+  - `run_migrations_online()` 使用 `create_async_engine` + `run_sync`
+  - 自动导入所有 models 以 populating `Base.metadata`
+- `backend/alembic/script.py.mako` — 标准迁移模板
+- `docs/database-migrations.md` — 完整命令手册（autogenerate / upgrade / downgrade / troubleshooting）
+
+### config.py 修复
+
+- `.env` 路径改为基于 `Path(__file__).resolve().parent.parent` 的绝对路径
+- 无论从哪个目录启动都能正确读取项目根目录的 `.env`
