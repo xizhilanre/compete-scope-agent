@@ -110,4 +110,4 @@ async def get_report(report_id: str) -> Envelope[ReportResponse]:
     """Get a structured analysis report by ID."""
     if report_id == _MOCK_REPORT.id:
         return ok(_MOCK_REPORT)
-    return err(f"Report {report_id!r} not found")
+    return err(f"Report {report_id!r} not found")  # type: ignore[return-value]

@@ -16,7 +16,7 @@ class AgentState(TypedDict):
     status: str
 
 
-def build_analysis_graph() -> StateGraph:
+def build_analysis_graph():
     graph = StateGraph(AgentState)
 
     graph.add_node("planner", lambda s: {**s, "status": "planning"})

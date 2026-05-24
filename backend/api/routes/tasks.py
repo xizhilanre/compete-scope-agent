@@ -88,4 +88,4 @@ async def get_task(task_id: str) -> Envelope[TaskResponse]:
     """Get a single task by ID."""
     if task_id == _MOCK_TASK.id:
         return ok(_MOCK_TASK)
-    return err(f"Task {task_id!r} not found")
+    return err(f"Task {task_id!r} not found")  # type: ignore[return-value]

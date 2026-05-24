@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from langchain_core.tools import tool
 
@@ -5,7 +7,7 @@ from backend.config import settings
 
 
 @tool
-async def tavily_search(query: str, max_results: int = 5) -> list[dict]:
+async def tavily_search(query: str, max_results: int = 5) -> list[dict[str, str]]:
     """Search the web using Tavily Search API."""
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
@@ -23,7 +25,7 @@ async def tavily_search(query: str, max_results: int = 5) -> list[dict]:
 
 
 @tool
-async def firecrawl_extract(url: str) -> dict:
+async def firecrawl_extract(url: str) -> dict[str, Any]:
     """Extract structured content from a URL using Firecrawl."""
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(

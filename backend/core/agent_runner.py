@@ -18,5 +18,6 @@ async def run_analysis(product_name: str) -> str:
         "status": "queued",
     }
 
-    final_state = await graph.ainvoke(initial_state)
-    return final_state["report_markdown"]
+    compiled = graph.compile()
+    final_state = await compiled.ainvoke(initial_state)
+    return str(final_state["report_markdown"])
