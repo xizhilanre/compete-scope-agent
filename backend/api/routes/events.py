@@ -183,5 +183,11 @@ async def simulate_events(task_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _format_sse(event_name: str, data: str) -> str:
-    """Build a single SSE message block."""
-    return f"event: {event_name}\ndata: {data}\n\n"
+    """Build a single SSE message block.
+
+    NOTE: We intentionally omit the ``event:`` line from the SSE frame.
+    The event type lives inside the JSON payload (``{"event": "task_start", ...}``)
+    so the browser's EventSource.onmessage fires for every frame — no need for
+    per-type addEventListener calls.
+    """
+    return f"data: {data}\n\n"

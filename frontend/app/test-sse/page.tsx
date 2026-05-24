@@ -22,32 +22,34 @@ export default function TestSSEPage() {
   const { connect, disconnect, isConnected, taskStatus, agentStates, events, error } =
     useSSE();
   const [taskId, setTaskId] = useState("test-1");
-  const [simulating, setSimulating] = useState(false);
+  const [loading, setLoading] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events]);
 
-  async function handleSimulate() {
-    setSimulating(true);
+  async function handleStart() {
+    setLoading(true);
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       await fetch(`${base}/api/analyze/${taskId}/_simulate`, { method: "POST" });
+      // Brief pause so the first events land in the queue before we connect
+      await new Promise((r) => setTimeout(r, 400));
+      connect(taskId);
     } catch {
-      // Ignore — user can still connect
+      // Fallback: try to connect even if simulate failed
+      connect(taskId);
     } finally {
-      setSimulating(false);
+      setLoading(false);
     }
   }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-2 text-2xl font-bold">
-        SSE Smoke Test
-      </h1>
+      <h1 className="mb-2 text-2xl font-bold">SSE Smoke Test</h1>
       <p className="mb-8 text-sm text-zinc-500">
-        Step 1: Simulate → Step 2: Connect (within 10s)
+        One click: fires simulation, then connects.
       </p>
 
       {/* Controls */}
@@ -59,20 +61,13 @@ export default function TestSSEPage() {
           className="w-40 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-brand"
         />
 
-        <button
-          onClick={handleSimulate}
-          disabled={simulating}
-          className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
-        >
-          {simulating ? "Publishing..." : "1. Simulate"}
-        </button>
-
         {!isConnected ? (
           <button
-            onClick={() => connect(taskId)}
-            className="rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light"
+            onClick={handleStart}
+            disabled={loading}
+            className="rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
           >
-            2. Connect
+            {loading ? "Starting..." : "Simulate & Connect"}
           </button>
         ) : (
           <button

@@ -141,10 +141,6 @@ export function useSSE(): UseSSEReturn {
         handleMessageRef.current(e);
       };
 
-      es.addEventListener("heartbeat", () => {
-        // Heartbeat received — connection is alive, no state change needed.
-      });
-
       es.onerror = () => {
         setIsConnected(false);
         es.close();
