@@ -226,3 +226,51 @@
 - **Stale-closure 安全**：`handleMessageRef` + `taskStatusRef` 避免 EventSource 回调中的闭包过期
 - **生命周期管理**：unmount 自动断开，disconnect 取消重连计时器
 - 旧 `analysis.ts` 中的 `SSEEvent` 接口已移除，统一使用新类型
+
+---
+
+## 2026-05-24 — DevOps 工程化：Ruff/Prettier/Docker/VSCode 全链路配置
+
+### Python 工具链（`pyproject.toml`）
+
+- **Ruff Linter** — target-version py312, line-length=100
+  - 规则集：E（pycodestyle）、F（pyflakes）、I（isort 排序）、N（pep8-naming）、UP（pyupgrade）、ASYNC（异步最佳实践）、BLE（盲 except）、B（bugbear）、SIM（简化）、RUF（ruff 专属）
+  - isort：force-single-line，known-first-party=backend
+  - 忽略：E501（行宽由 formatter 控制）、B008（FastAPI Depends 参数默认值）
+- **Ruff Formatter** — 替代 black，双引号，空格缩进，docstring 代码格式化
+- **Mypy** — strict mode, pydantic 插件, ignore_missing_imports
+- **Pytest** — asyncio_mode=auto，testpaths=backend
+
+### 前端工具链
+
+- **`.prettierrc`** — semi, singleQuote=false, tabWidth=2, trailingComma=all, printWidth=100
+  - `prettier-plugin-tailwindcss` 集成，tailwindFunctions: [cn, clsx]
+- **package.json 补充** — prettier + prettier-plugin-tailwindcss 依赖
+  - 新增 script：`format`（格式化写入）、`format:check`（CI 检查）
+
+### Docker 基础设施
+
+- **`docker-compose.yml`** — 3 个服务：
+  - **db**：postgres:16-alpine，端口 5432，POSTGRES_USER/PASSWORD/DB 完整配置
+    - healthcheck: `pg_isready -U postgres -d compete_scope`，5s 间隔，10 次重试
+    - Volume: pgdata（本地持久化）
+  - **backend**：python:3.12-slim，依赖 db service_healthy，热重载 --reload
+  - **frontend**：node:22-alpine，依赖 backend，npm run dev
+- **Dockerfile**（backend/frontend 各一）：多阶段优化，PYTHONPATH 设置，非 root
+
+### VSCode 团队配置（`.vscode/`）
+
+- **settings.json** — editor.formatOnSave，Python→Ruff，TS/JS/JSON/CSS→Prettier
+  - Tailwind CSS IntelliSense 正则（cn() class 识别）
+  - 文件排除：__pycache__, .next, node_modules, mypy_cache, ruff_cache
+- **launch.json** — 3 个调试配置：
+  - "Debug FastAPI Backend"：debugpy + uvicorn --reload，jinja 断点支持，PYTHONPATH 设置
+  - "Debug FastAPI (no reload)"：无热重载版本
+  - "Debug Next.js Frontend"：npm run dev + serverReadyAction 自动打开浏览器
+- **extensions.json** — 推荐：Ruff, Prettier, debugpy, Python, Tailwind CSS IntelliSense, ESLint
+- `.gitignore` 精细化：`.vscode/*` 全部忽略，`!.vscode/{settings,launch,extensions}.json` 三个文件跟踪
+
+### .gitignore 全面升级
+
+- 分类注释：Python / Node.js / Env & Secrets / IDE / OS / Docker / Database / Personal
+- 新增：.pytest_cache, .mypy_cache, .ruff_cache, coverage.xml, htmlcov, next-env.d.ts, .docker/, Desktop.ini
