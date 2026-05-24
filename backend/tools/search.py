@@ -34,4 +34,4 @@ async def firecrawl_extract(url: str) -> dict[str, Any]:
             headers={"Authorization": f"Bearer {settings.FIRECRAWL_API_KEY}"},
         )
         resp.raise_for_status()
-        return resp.json()
+        return resp.json()  # type: ignore[no-any-return]
