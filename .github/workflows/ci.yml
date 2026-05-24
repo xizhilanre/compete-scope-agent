@@ -11,11 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python-lint:
+  backend-lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,21 +21,30 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff pytest
+        run: pip install -r backend/requirements.txt ruff mypy
       - name: Lint (ruff)
+        working-directory: backend
         run: ruff check .
       - name: Type check (mypy)
-        run: mypy .
+        run: mypy backend/ --ignore-missing-imports
 
-  python-test:
-    needs: python-lint
+  backend-test:
+    needs: backend-lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: competescope
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,23 +54,21 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install deps
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
       - name: Test
-        run: pytest --cov=. --cov-report=xml
+        run: pytest backend/ --cov=backend --cov-report=xml -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/competescope
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
-          files: backend/coverage.xml
+          files: coverage.xml
           flags: backend
         continue-on-error: true
 
   frontend-lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -73,18 +77,18 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install deps
+        working-directory: frontend
         run: npm ci
       - name: Lint (ESLint)
+        working-directory: frontend
         run: npx eslint .
       - name: Type check (tsc)
+        working-directory: frontend
         run: npx tsc --noEmit
 
   frontend-test:
     needs: frontend-lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -93,8 +97,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install deps
+        working-directory: frontend
         run: npm ci
       - name: Test
+        working-directory: frontend
         run: npm test -- --coverage
       - name: Upload coverage
         uses: codecov/codecov-action@v4
