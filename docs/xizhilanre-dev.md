@@ -325,3 +325,43 @@
 - ESLint v9 的 flat config 与 v8 不兼容，Next.js 项目需要用 `FlatCompat` 桥接
 - `npm ci` 严格依赖 `package-lock.json`，必须提交到仓库
 - CI 环境与本地不同（PYTHONPATH、node_modules 路径），需要通过 workflow 显式配置
+
+---
+
+## 2026-05-24 — 数据库上线：本地 PostgreSQL 排障 + Supabase 云端迁移
+
+### 本地环境诊断
+
+- 确认本机 PostgreSQL 17.5 已安装运行（Windows Service `postgresql-x64-17`，数据目录 `D:\postsql\data\data`）
+- 端口 5432 正常监听，pg_hba.conf 使用 `scram-sha-256` 认证
+- **问题**：默认密码不对，`user:password` 无法连接（安装时未记录 postgres 密码）
+- **修复**：临时将 pg_hba.conf 改为 `trust` → 重设 `postgres` 密码 → 创建应用用户 `user`/`password` → 创建 `competescope` 数据库 → 恢复 `scram-sha-256` → 重载 PostgreSQL 服务
+- 首次 `alembic upgrade head` 失败，因为没有初始迁移文件 — 用 `--autogenerate` 生成后提交
+
+### 发现并修复的基础设施缺陷
+
+- **缺少 `backend/__init__.py`**：导致 `from backend.xxx` 绝对导入全部失败（Alembic env.py、config.py 均受影响），已创建
+- **缺少初始 Alembic 迁移**：模型已定义但从未 `autogenerate`，三张表（tasks/reports/execution_logs）在本地数据库中不存在，已生成 `573891a7f740_init_tables.py` 并执行
+- **PYTHONPATH 问题**：`backend` 不是可安装包（无 pyproject.toml），所有命令需要 `PYTHONPATH=/d/.../CompeteScopeAgent` 前缀
+
+### 迁移到 Supabase（团队开发需要）
+
+- **为什么选 Supabase**：免费额度够用（500 MB），自带 Dashboard、Auth、REST API，PostgreSQL 兼容无代码改动
+- **连接信息**：
+  - Host: `db.vwwancqvmsijqlsifymr.supabase.co:5432`
+  - Database: `postgres`（Supabase 不允许自定义库名，用默认的 postgres 库）
+  - 密码含特殊字符 `@`，需 URL encode 为 `%40`
+- **已执行操作**：
+  - `.env` 和 `backend/alembic.ini` 的 `DATABASE_URL` 指向 Supabase
+  - `alembic upgrade head` → 三张业务表 + alembic_version 全部创建成功
+  - 连接验证通过：SQLAlchemy async_session 读写正常
+- **团队使用方式**：成员拉代码 → 复制 `.env.example` → 填 Supabase 连接串 → `PYTHONPATH=. alembic upgrade head` → 即可开发
+
+### 当前环境变量状态
+
+| 变量 | 状态 |
+|------|------|
+| `DATABASE_URL` | Supabase 云端 ✅ |
+| `OPENAI_API_KEY` | 占位值 `sk-`，需替换真实 Key |
+| `TAVILY_API_KEY` | 占位值 `tvly-`，需替换真实 Key |
+| `FIRECRAWL_API_KEY` | 占位值 `fc-`，需替换真实 Key |
