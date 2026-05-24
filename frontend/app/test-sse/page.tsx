@@ -22,45 +22,71 @@ export default function TestSSEPage() {
   const { connect, disconnect, isConnected, taskStatus, agentStates, events, error } =
     useSSE();
   const [taskId, setTaskId] = useState("test-1");
+  const [simulating, setSimulating] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events]);
 
+  async function handleSimulate() {
+    setSimulating(true);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      await fetch(`${base}/api/analyze/${taskId}/_simulate`, { method: "POST" });
+    } catch {
+      // Ignore — user can still connect
+    } finally {
+      setSimulating(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-8 text-2xl font-bold">
-        SSE Smoke Test — <span className="text-zinc-400">/api/analyze/{`{task_id}`}/stream</span>
+      <h1 className="mb-2 text-2xl font-bold">
+        SSE Smoke Test
       </h1>
+      <p className="mb-8 text-sm text-zinc-500">
+        Step 1: Simulate → Step 2: Connect (within 10s)
+      </p>
 
-      {/* Connection bar */}
-      <div className="mb-6 flex items-center gap-3">
+      {/* Controls */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <input
           value={taskId}
           onChange={(e) => setTaskId(e.target.value)}
           placeholder="Task ID"
-          className="w-48 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="w-40 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-brand"
         />
+
+        <button
+          onClick={handleSimulate}
+          disabled={simulating}
+          className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+        >
+          {simulating ? "Publishing..." : "1. Simulate"}
+        </button>
+
         {!isConnected ? (
           <button
             onClick={() => connect(taskId)}
-            className="rounded bg-brand px-5 py-2 text-sm font-medium text-white hover:bg-brand-light"
+            className="rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light"
           >
-            Connect
+            2. Connect
           </button>
         ) : (
           <button
             onClick={disconnect}
-            className="rounded border border-zinc-600 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="rounded border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
           >
             Disconnect
           </button>
         )}
+
         <span
           className={`ml-auto text-xs ${isConnected ? "text-green-400" : "text-zinc-600"}`}
         >
-          {isConnected ? "● CONNECTED" : "○ DISCONNECTED"}
+          {isConnected ? "● LIVE" : "○ IDLE"}
         </span>
       </div>
 

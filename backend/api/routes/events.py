@@ -16,8 +16,15 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from backend.schemas.events import (
+    AgentCompleteEvent,
+    AgentStartEvent,
     HeartbeatEvent,
     SSEEvent,
+    TaskCompleteEvent,
+    TaskFailedEvent,
+    TaskStartEvent,
+    ToolCallEvent,
+    ToolResultEvent,
     iso_now,
 )
 
@@ -111,6 +118,64 @@ async def stream_events(task_id: str, request: Request) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Simulated event stream (for smoke testing)
+# ---------------------------------------------------------------------------
+
+@router.post("/{task_id}/_simulate")
+async def simulate_events(task_id: str) -> dict:
+    """Fire a background task that publishes mock agent events to the SSE queue.
+
+    Call this BEFORE connecting to GET /{task_id}/stream.
+    """
+    ensure_queue(task_id)
+
+    async def _run():
+        agents = ["planner", "research", "analysis", "writer", "reviewer"]
+        tools = [
+            ("tavily_search", {"query": "competitors"}),
+            ("firecrawl_extract", {"url": "https://example.com"}),
+        ]
+
+        await asyncio.sleep(0.3)
+        await publish(task_id, TaskStartEvent(
+            task_id=task_id, target_product="Notion", timestamp=iso_now(),
+        ))
+
+        for agent in agents:
+            await asyncio.sleep(0.3)
+            await publish(task_id, AgentStartEvent(
+                task_id=task_id, agent=agent, timestamp=iso_now(),
+            ))
+
+            for tool_name, tool_input in tools:
+                await asyncio.sleep(0.15)
+                await publish(task_id, ToolCallEvent(
+                    task_id=task_id, agent=agent, tool_name=tool_name,
+                    tool_input=tool_input, timestamp=iso_now(),
+                ))
+                await asyncio.sleep(0.1)
+                await publish(task_id, ToolResultEvent(
+                    task_id=task_id, agent=agent, tool_name=tool_name,
+                    success=True, duration_ms=42, timestamp=iso_now(),
+                ))
+
+            await asyncio.sleep(0.2)
+            await publish(task_id, AgentCompleteEvent(
+                task_id=task_id, agent=agent, timestamp=iso_now(),
+                duration_ms=500, output_summary=f"{agent} completed analysis",
+            ))
+
+        await asyncio.sleep(0.3)
+        await publish(task_id, TaskCompleteEvent(
+            task_id=task_id, timestamp=iso_now(),
+            total_duration_ms=3500, report_id="r_smoke_001",
+        ))
+
+    asyncio.create_task(_run())
+    return {"ok": True, "task_id": task_id, "message": "Simulation started — connect to SSE stream now"}
 
 
 # ---------------------------------------------------------------------------
