@@ -60,6 +60,7 @@ jobs:
         run: pytest backend/ --cov=backend --cov-report=xml -v
         env:
           DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/competescope
+          PYTHONPATH: .
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
