@@ -12,21 +12,19 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
+from fastapi import Request
 from fastapi.responses import StreamingResponse
 
-from backend.schemas.events import (
-    AgentCompleteEvent,
-    AgentStartEvent,
-    HeartbeatEvent,
-    SSEEvent,
-    TaskCompleteEvent,
-    TaskFailedEvent,
-    TaskStartEvent,
-    ToolCallEvent,
-    ToolResultEvent,
-    iso_now,
-)
+from backend.schemas.events import AgentCompleteEvent
+from backend.schemas.events import AgentStartEvent
+from backend.schemas.events import HeartbeatEvent
+from backend.schemas.events import SSEEvent
+from backend.schemas.events import TaskCompleteEvent
+from backend.schemas.events import TaskStartEvent
+from backend.schemas.events import ToolCallEvent
+from backend.schemas.events import ToolResultEvent
+from backend.schemas.events import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +84,7 @@ async def _event_generator(task_id: str) -> AsyncGenerator[str, None]:
         while True:
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_SECONDS)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 heartbeat = HeartbeatEvent(task_id=task_id, timestamp=iso_now())
                 yield _format_sse("heartbeat", heartbeat.model_dump_json())
                 continue
@@ -174,7 +172,7 @@ async def simulate_events(task_id: str) -> dict:
             total_duration_ms=3500, report_id="r_smoke_001",
         ))
 
-    asyncio.create_task(_run())
+    _task = asyncio.create_task(_run())  # noqa: RUF006 — fire-and-forget is intentional
     return {"ok": True, "task_id": task_id, "message": "Simulation started — connect to SSE stream now"}
 
 

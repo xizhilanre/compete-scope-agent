@@ -1,9 +1,11 @@
 """SSE event schemas — strongly typed, exact match with frontend types/sse-events.ts."""
 
-from datetime import datetime, timezone
+from datetime import UTC
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 # ---------------------------------------------------------------------------
 # String literal unions
@@ -113,4 +115,4 @@ SSEEvent = (
 # ---------------------------------------------------------------------------
 
 def iso_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

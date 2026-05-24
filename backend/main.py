@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import health
-from backend.api.routes import events, reports, tasks
+from backend.api.routes import events
+from backend.api.routes import reports
+from backend.api.routes import tasks
 from backend.config import settings
 
 app = FastAPI(

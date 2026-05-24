@@ -3,18 +3,19 @@
 MOCK DATA — replace with real DB queries after wiring up the repository layer.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC
+from datetime import datetime
 
 from fastapi import APIRouter
 
-from backend.schemas.base import Envelope, err, ok
-from backend.schemas.report import (
-    CitationEntry,
-    MetricCard,
-    ReportResponse,
-    SWOTItem,
-    TokenUsage,
-)
+from backend.schemas.base import Envelope
+from backend.schemas.base import err
+from backend.schemas.base import ok
+from backend.schemas.report import CitationEntry
+from backend.schemas.report import MetricCard
+from backend.schemas.report import ReportResponse
+from backend.schemas.report import SWOTItem
+from backend.schemas.report import TokenUsage
 
 router = APIRouter(tags=["reports"], prefix="/reports")
 
@@ -70,7 +71,7 @@ _MOCK_REPORT = ReportResponse(
         ),
     ],
     metric_cards=[
-        MetricCard(label="Pricing (USD/month)", value="$0–$18", trend="stable", competitor_count=8),
+        MetricCard(label="Pricing (USD/month)", value="$0-$18", trend="stable", competitor_count=8),
         MetricCard(label="G2 Rating", value="4.7 / 5", trend="up", competitor_count=12),
         MetricCard(label="Web Traffic (est.)", value="~120M/mo", trend="up", competitor_count=6),
     ],
@@ -79,13 +80,13 @@ _MOCK_REPORT = ReportResponse(
             url="https://example.com/notion-growth-2026",
             title="Notion Crosses 100M Users in 2026",
             snippet="Notion has surpassed 100 million users...",
-            retrieved_at=datetime(2026, 5, 24, 10, 1, 30, tzinfo=timezone.utc),
+            retrieved_at=datetime(2026, 5, 24, 10, 1, 30, tzinfo=UTC),
         ),
         CitationEntry(
             url="https://example.com/notion-ai",
             title="How Notion AI Is Changing Enterprise Productivity",
             snippet="Notion AI features have driven a 40 % increase...",
-            retrieved_at=datetime(2026, 5, 24, 10, 2, 15, tzinfo=timezone.utc),
+            retrieved_at=datetime(2026, 5, 24, 10, 2, 15, tzinfo=UTC),
         ),
     ],
     token_usage=TokenUsage(
@@ -96,7 +97,7 @@ _MOCK_REPORT = ReportResponse(
     ),
     quality_score=0.87,
     quality_feedback="Good coverage. Consider adding pricing-tier breakdown per competitor.",
-    created_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=timezone.utc),
+    created_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=UTC),
 )
 
 

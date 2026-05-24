@@ -5,11 +5,10 @@ import asyncio
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from backend.config import settings
-from backend.db.database import Base
-
 # Import all models so DeclarativeBase.metadata is populated
 import backend.db.models  # noqa: F401
+from backend.config import settings
+from backend.db.database import Base
 
 target_metadata = Base.metadata
 

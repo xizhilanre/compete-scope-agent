@@ -2,8 +2,8 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
+from pydantic import Field
 
 # ---------------------------------------------------------------------------
 # Nested models
@@ -20,7 +20,7 @@ class SWOTItem(BaseModel):
 
 class MetricCard(BaseModel):
     label: str = Field(..., examples=["Pricing (USD/month)"])
-    value: str = Field(..., examples=["$10–$25"])
+    value: str = Field(..., examples=["$10-$25"])
     trend: str | None = Field(default=None, examples=["up"])
     competitor_count: int = Field(default=0)
 

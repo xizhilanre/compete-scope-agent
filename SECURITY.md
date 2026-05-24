@@ -8,6 +8,6 @@
 
 ## Reporting a Vulnerability
 
-**Do NOT open a public issue.** Email [xizhilanre.@gmai.com] with details.
+**Do NOT open a public issue.** Email [xizhilanre@gmai.com] with details.
 
 We aim to acknowledge reports within 48 hours and provide a fix timeline within 5 business days.

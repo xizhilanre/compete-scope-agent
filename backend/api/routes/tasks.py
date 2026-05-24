@@ -4,17 +4,19 @@ MOCK DATA — all endpoints return static fixtures.
 Replace with real DB queries after wiring up the repository layer.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC
+from datetime import datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
+from fastapi import Query
 
-from backend.schemas.base import Envelope, err, ok
-from backend.schemas.task import (
-    TaskCreateRequest,
-    TaskListResponse,
-    TaskResponse,
-    TaskStatusEnum,
-)
+from backend.schemas.base import Envelope
+from backend.schemas.base import err
+from backend.schemas.base import ok
+from backend.schemas.task import TaskCreateRequest
+from backend.schemas.task import TaskListResponse
+from backend.schemas.task import TaskResponse
+from backend.schemas.task import TaskStatusEnum
 
 router = APIRouter(tags=["tasks"], prefix="/tasks")
 
@@ -27,10 +29,10 @@ _MOCK_TASK = TaskResponse(
     target_product="Notion",
     analysis_dimensions={"pricing": True, "features": True, "ux": True, "market": True},
     status=TaskStatusEnum.COMPLETED,
-    created_at=datetime(2026, 5, 24, 10, 0, 0, tzinfo=timezone.utc),
-    updated_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=timezone.utc),
-    started_at=datetime(2026, 5, 24, 10, 0, 1, tzinfo=timezone.utc),
-    completed_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=timezone.utc),
+    created_at=datetime(2026, 5, 24, 10, 0, 0, tzinfo=UTC),
+    updated_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=UTC),
+    started_at=datetime(2026, 5, 24, 10, 0, 1, tzinfo=UTC),
+    completed_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=UTC),
     error=None,
 )
 
@@ -41,9 +43,9 @@ _MOCK_TASKS = [
         target_product="Figma",
         analysis_dimensions={"pricing": True, "features": True, "ux": True, "market": False},
         status=TaskStatusEnum.RUNNING,
-        created_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 5, 24, 11, 2, 0, tzinfo=timezone.utc),
-        started_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 5, 24, 11, 2, 0, tzinfo=UTC),
+        started_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=UTC),
         completed_at=None,
         error=None,
     ),
@@ -62,8 +64,8 @@ async def create_task(body: TaskCreateRequest) -> Envelope[TaskResponse]:
         target_product=body.target_product,
         analysis_dimensions=body.analysis_dimensions,
         status=TaskStatusEnum.PENDING,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         started_at=None,
         completed_at=None,
         error=None,
