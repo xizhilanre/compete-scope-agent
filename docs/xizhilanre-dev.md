@@ -147,3 +147,41 @@
 
 - `.env` 路径改为基于 `Path(__file__).resolve().parent.parent` 的绝对路径
 - 无论从哪个目录启动都能正确读取项目根目录的 `.env`
+
+---
+
+## 2026-05-24 — Pydantic v2 Schemas + RESTful 路由契约层
+
+### Schema 层（`backend/schemas/`）
+
+- **`base.py`** — 统一信封结构：
+  - `Envelope[T]` — Generic wrapper，`{success, data, error}` 三者固定
+  - `ok(data)` / `err(message)` — 快捷工厂函数
+- **`task.py`** — 任务契约：
+  - `TaskCreateRequest` — POST body（target_product + analysis_dimensions）
+  - `TaskResponse` — 单任务视图，`from_attributes=True`
+  - `TaskListResponse` — 分页列表视图（total, skip, limit, items）
+  - `TaskStatusEnum` — 与 DB 层枚举对齐
+- **`report.py`** — 报告契约（全部 `from_attributes=True`）：
+  - `ReportResponse` — 顶层报告视图
+  - `SWOTItem` — SWOT 条目（category, point, confidence, citations）
+  - `MetricCard` — 指标卡片（label, value, trend, competitor_count）
+  - `CitationEntry` — 引用溯源（url, title, snippet, retrieved_at）
+  - `TokenUsage` — Token 消耗统计（含 cost_estimate_usd）
+
+### 路由层（`backend/api/routes/`）
+
+- **`tasks.py`** — 3 个端点，全部返回 `Envelope` 包裹的 mock 数据：
+  - `POST /api/tasks` → 201 + Envelope[TaskResponse]
+  - `GET /api/tasks?skip=0&limit=20` → Envelope[TaskListResponse]
+  - `GET /api/tasks/{task_id}` → Envelope[TaskResponse] 或 404 envelope
+- **`reports.py`** — 1 个端点：
+  - `GET /api/reports/{report_id}` → Envelope[ReportResponse]（含完整 SWOT、MetricCards、Citations、TokenUsage）
+
+### 设计决策
+
+- 所有响应体统一走 `Envelope[T]`，前端只需检查 `success` 字段即可分流
+- `from_attributes=True` 确保后续可直接传入 SQLAlchemy ORM 对象，不需要 `.model_validate()`
+- 日期时间使用 Python `datetime` + Pydantic 默认序列化，输出标准 ISO-8601
+- 路由层使用 mock 数据，不依赖 DB，当前即可通过 `/api/docs` 测试全部端点
+- `backend/main.py` 已更新，include 了新的 routes 模块
