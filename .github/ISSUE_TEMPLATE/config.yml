@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/xizhilanre/compete-scope-agent#readme
+    about: Check the README for usage documentation.

@@ -1,5 +1,9 @@
 # 🚀 compete-scope-agent
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/xizhilanre/compete-scope-agent)](https://github.com/xizhilanre/compete-scope-agent/stargazers)
+[![CI](https://github.com/xizhilanre/compete-scope-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/xizhilanre/compete-scope-agent/actions/workflows/ci.yml)
+
 输入一个产品名，5 个 Agent 协同工作 10 分钟，自动生成企业级竞品分析报告。
 
 - **核心架构**：基于 LangGraph 的 `Planner` → `Research` → `Analysis` → `Writer` → `Reviewer` 五节点 DAG 异步工作流。
