@@ -1,56 +1,75 @@
 "use client";
 
-import { useAnalysis } from "@/hooks/useAnalysis";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/utils";
 
 export default function Home() {
   const [product, setProduct] = useState("");
-  const { job, loading, events, start } = useAnalysis();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product.trim()) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await apiFetch<{ data: { id: string } }>("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          target_product: product.trim(),
+          analysis_dimensions: ["SWOT分析", "功能分析", "定价策略", "市场定位"],
+        }),
+      });
+      router.push(`/tasks/${res.data.id}`);
+    } catch {
+      setError("无法连接后端服务，请确保后端已启动 (localhost:8000)");
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-6 py-24">
       <h1 className="text-4xl font-bold tracking-tight">
-        Compete<span className="text-brand">Scope</span>
+        Compete<span className="text-indigo-400">Scope</span>
       </h1>
-      <p className="text-zinc-400">
-        Input a product name. 5 agents. 10 minutes. Full competitive analysis report.
+      <p className="text-zinc-400 text-center max-w-md">
+        输入产品名，5 个 AI Agent 协同工作，自动生成企业级竞品分析报告
       </p>
 
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (product.trim()) start(product.trim());
-        }}
+        onSubmit={handleSubmit}
         className="flex w-full max-w-md gap-3"
       >
         <input
           value={product}
           onChange={(e) => setProduct(e.target.value)}
-          placeholder="e.g. Notion, Figma, Linear..."
-          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm outline-none focus:border-brand"
+          placeholder="例如：Notion, Figma, Linear..."
+          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          autoFocus
         />
         <button
           type="submit"
           disabled={loading || !product.trim()}
-          className="rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-light disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
         >
-          {loading ? "Analyzing..." : "Analyze"}
+          {loading ? "正在创建..." : "开始分析"}
         </button>
       </form>
 
-      {job && (
-        <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm">
-          <p>Status: <span className="text-brand">{job.status}</span></p>
-          <p>Agent: {job.current_agent || "—"}</p>
-          {events.length > 0 && (
-            <pre className="mt-3 max-h-48 overflow-y-auto rounded bg-zinc-950 p-3 text-xs text-zinc-400">
-              {events.map((e, i) => (
-                <div key={i}>{e}</div>
-              ))}
-            </pre>
-          )}
-        </div>
-      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
+
+      <div className="mt-4 flex gap-4 text-sm text-zinc-500">
+        <a href="/dashboard" className="hover:text-zinc-300 transition">
+          查看 Dashboard →
+        </a>
+        <a href="http://localhost:8000/api/docs" className="hover:text-zinc-300 transition">
+          API 文档 →
+        </a>
+      </div>
     </main>
   );
 }

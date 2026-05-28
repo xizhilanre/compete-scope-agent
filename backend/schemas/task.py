@@ -49,6 +49,7 @@ class TaskResponse(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     error: str | None = None
+    report_id: str | None = None
 
     model_config = {"from_attributes": True}
 

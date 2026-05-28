@@ -94,7 +94,7 @@ async def run_dag(
 
             final_state = await dag.ainvoke(initial_state)
 
-            await create_report(
+            report = await create_report(
                 db,
                 task_id=task_id,
                 markdown=final_state["final_report_markdown"],
@@ -107,6 +107,7 @@ async def run_dag(
                 task_id,
                 TaskCompleteEvent(
                     task_id=task_id,
+                    report_id=report.id,
                     timestamp=iso_now(),
                 ),
             )

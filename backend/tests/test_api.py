@@ -34,7 +34,7 @@ async def test_health(client: AsyncClient):
 async def test_create_task(client: AsyncClient):
     resp = await client.post(
         "/api/tasks",
-        json={"target_product": "Slack", "analysis_dimensions": {"pricing": True}},
+        json={"target_product": "Slack", "analysis_dimensions": ["功能分析", "定价策略"]},
     )
     assert resp.status_code == 201
     data = resp.json()

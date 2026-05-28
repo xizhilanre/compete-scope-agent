@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/utils";
 import DAGVisualizer from "@/components/dag/DAGVisualizer";
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -12,6 +13,12 @@ const STATUS_MESSAGES: Record<string, string> = {
   reviewer: "审查员正在审核报告质量...",
 };
 
+interface TaskInfo {
+  id: string;
+  status: string;
+  report_id: string | null;
+}
+
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -21,45 +28,70 @@ export default function TaskDetailPage() {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const es = new EventSource(`${base}/api/analyze/${id}/stream`);
-    esRef.current = es;
+    let cancelled = false;
 
-    es.addEventListener("agent_start", (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      setAgentStates((prev) => ({ ...prev, [data.agent]: { status: "running" } }));
-      setStatusMessage(STATUS_MESSAGES[data.agent] || `${data.agent} 正在执行...`);
-    });
+    async function init() {
+      try {
+        // Check if task is already done
+        const res = await apiFetch<{ data: TaskInfo }>(`/api/tasks/${id}`);
+        if (cancelled) return;
 
-    es.addEventListener("agent_complete", (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      setAgentStates((prev) => ({ ...prev, [data.agent]: { status: "completed" } }));
-    });
+        const task = res.data;
+        if (task.status === "COMPLETED" && task.report_id) {
+          router.replace(`/reports/${task.report_id}`);
+          return;
+        }
+        if (task.status === "FAILED") {
+          setError("任务执行失败，请重试");
+          return;
+        }
+      } catch {
+        // Task might not exist yet, continue to SSE
+      }
 
-    es.addEventListener("task_complete", (e: MessageEvent) => {
-      es.close();
-      const data = JSON.parse(e.data);
-      // Navigate to report page using report_id from the event
-      const reportId = data.report_id || id;
-      setTimeout(() => router.push(`/reports/${reportId}`), 500);
-    });
+      // Connect to SSE for live progress
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const es = new EventSource(`${base}/api/analyze/${id}/stream`);
+      esRef.current = es;
 
-    es.addEventListener("task_start", () => {
-      setStatusMessage("Agent 工作流已启动...");
-    });
+      es.addEventListener("agent_start", (e: MessageEvent) => {
+        const data = JSON.parse(e.data);
+        setAgentStates((prev) => ({ ...prev, [data.agent]: { status: "running" } }));
+        setStatusMessage(STATUS_MESSAGES[data.agent] || `${data.agent} 正在执行...`);
+      });
 
-    es.addEventListener("task_failed", (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      setError(data.error || "任务执行失败");
-      es.close();
-    });
+      es.addEventListener("agent_complete", (e: MessageEvent) => {
+        const data = JSON.parse(e.data);
+        setAgentStates((prev) => ({ ...prev, [data.agent]: { status: "completed" } }));
+      });
 
-    es.onerror = () => {
-      // EventSource will auto-reconnect
-    };
+      es.addEventListener("task_complete", (e: MessageEvent) => {
+        es.close();
+        const data = JSON.parse(e.data);
+        const reportId = data.report_id || id;
+        setTimeout(() => router.push(`/reports/${reportId}`), 500);
+      });
+
+      es.addEventListener("task_start", () => {
+        setStatusMessage("Agent 工作流已启动...");
+      });
+
+      es.addEventListener("task_failed", (e: MessageEvent) => {
+        const data = JSON.parse(e.data);
+        setError(data.error || "任务执行失败");
+        es.close();
+      });
+
+      es.onerror = () => {
+        // EventSource will auto-reconnect
+      };
+    }
+
+    init();
 
     return () => {
-      es.close();
+      cancelled = true;
+      esRef.current?.close();
     };
   }, [id, router]);
 

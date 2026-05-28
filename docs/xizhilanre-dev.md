@@ -1,5 +1,50 @@
 # xizhilanre 开发日志
 
+## 2026-05-28 — MVP 验证、Bug 修复与 LLM 真实模式对接
+
+### 数据库：Supabase → 本地 PostgreSQL
+- Supabase 云端 IPv6 DNS 解析失败（Windows getaddrinfo），切换回本地 PostgreSQL
+- `.env` `DATABASE_URL` 指向 `localhost:5432/competescope`，移除 Supabase URL
+- 尝试过 SOCKS5 隧道 + IPv6 DNS 解析方案，最终放弃（本地 DB 不依赖外部网络）
+- `database.py` 恢复为原始简洁版本
+- `alembic upgrade head` 本地建表成功
+
+### Python 3.11 兼容修复
+- `backend/schemas/base.py`: `class Envelope[T]` PEP 695 泛型 → `class Envelope(BaseModel, Generic[T])`
+- `backend/schemas/report.py`: `metric_cards`/`citations`/`swot`/`token_usage` 改为 nullable
+- 原因：系统仅有 Python 3.11.9，winget 安装 3.12 因证书问题失败
+
+### 前端路由修复
+- **Dashboard 路由冲突**：`(workspace)/page.tsx` 与根 `page.tsx` 同在 `/` 路径
+  - `(workspace)/page.tsx` → `(workspace)/dashboard/page.tsx`
+  - Sidebar Dashboard 链接：`/` → `/dashboard`
+- **首页 404 错误**：旧 `useAnalysis` hook 调用 `/api/analyze/start`（不存在）
+  - 重写首页为 `POST /api/tasks` → 跳转 `/tasks/{id}`
+  - 首页作为快速入口，Dashboard 作为完整工作台
+
+### 报告显示链路修复（核心 Bug）
+- **问题**：DAG 完成后前端收不到报告 — `task_id ≠ report_id`
+- **根因**：`TaskCompleteEvent` 未携带 `report_id`，前端拿 task_id 去查 /api/reports/{id} 返回 404
+- **修复**：
+  - `runtime.py`: `create_report()` 返回值 → `TaskCompleteEvent(report_id=report.id)`
+  - `Task` ORM: 新增 `report_id` property（访问 `self.report.id`）
+  - `TaskResponse` schema: 新增 `report_id: str | None` 字段
+  - `TaskDetailPage`: 先 GET /api/tasks/{id} 查状态，已完成则直接跳转 /reports/{report_id}
+
+### LLM 真实模式验证
+- 切换 `COMPETESCOPE_MOCK=false`，3 节点 DAG (Planner→Research→Writer)
+- DeepSeek API (deepseek-chat) 正常调用，Tavily Search 连通
+- 输入 "Linear" → 3238 字中文 Markdown 报告（SWOT + 竞品全景表格 + 定价策略）
+- 耗时约 40s（Planner ~5s + Research ~15s + Writer ~15-20s）
+
+### 前端全量页面状态
+- `/` — 首页（快速任务入口 + Dashboard/API 文档链接）
+- `/dashboard` — 任务列表（Sidebar 布局 + TaskCard 网格）
+- `/tasks/new` — 新建任务表单（5 维度多选）
+- `/tasks/{id}` — 任务详情（DAGVisualizer + SSE 实时状态）
+- `/reports/{id}` — 报告阅读（react-markdown + 质量评分标签）
+- `/test-sse` — SSE 冒烟测试页
+
 ## 2026-05-28 — Day 3: 真实 LLM 验证 (Task 17-20)
 
 ### Task 17: 环境变量开关

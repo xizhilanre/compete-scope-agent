@@ -1,13 +1,13 @@
 """Unified API response envelope — every endpoint wraps its payload in this."""
 
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
 T = TypeVar("T")
 
 
-class Envelope[T](BaseModel):
+class Envelope(BaseModel, Generic[T]):
     """Standard API response wrapper.
 
     All endpoints return:
@@ -21,11 +21,11 @@ class Envelope[T](BaseModel):
     model_config = {"from_attributes": True}
 
 
-def ok[T](data: T) -> Envelope[T]:
+def ok(data: T) -> Envelope[T]:
     """Shorthand for a successful response."""
-    return Envelope(success=True, data=data, error=None)
+    return Envelope[T](success=True, data=data, error=None)
 
 
 def err(message: str) -> Envelope[None]:
     """Shorthand for an error response."""
-    return Envelope(success=False, data=None, error=message)
+    return Envelope[None](success=False, data=None, error=message)
