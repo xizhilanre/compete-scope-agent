@@ -1,7 +1,8 @@
 """Smoke tests for the FastAPI application."""
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport
+from httpx import AsyncClient
 
 from backend.main import app
 
