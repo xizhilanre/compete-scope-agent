@@ -1,5 +1,29 @@
 # xizhilanre 开发日志
 
+## 2026-05-28 — Batch 1 后端基础设施（Task 1-5）
+
+### AnalysisState 数据总线
+- 创建 `backend/core/state.py`，定义 `AnalysisState` TypedDict
+- 包含 5 个 Agent 之间共享的全部字段（输入、Planner/Research/Analysis/Writer/Reviewer 输出、运行时跟踪）
+- `execution_logs` 使用 `Annotated[list[dict], operator.add]` 支持 LangGraph reduce
+
+### LLM 调用封装
+- 创建 `backend/core/llm.py`，提供 `get_llm()` 和 `safe_parse_json()`
+- `get_llm` 从 `backend.config.settings` 读取配置，仅当 base_url 非空时传入
+- `safe_parse_json` 按优先级尝试 4 种策略：直接 json.loads、代码块正则、首尾大括号、返回空 dict
+
+### Tavily 搜索封装
+- 创建 `backend/tools/tavily_search.py`，提供 `tavily_search_sync()`
+- 使用 `httpx.Client` 同步调用 Tavily API，返回规范化结果列表
+
+### ToolRouter 工具注册器
+- 创建 `backend/tools/registry.py`，实现 `ToolRouter` 类
+- `call_sync` 按工具名分发，自动计时并记录调用日志
+
+### 数据库 CRUD 层
+- 创建 `backend/db/crud.py`，6 个异步 CRUD 函数
+- create/get/list Task + update_task_status + create/get Report
+
 ## 2026-05-24 — GitHub 仓库初始化与规范化配置
 
 ### 仓库创建
