@@ -1,5 +1,40 @@
 # xizhilanre 开发日志
 
+## 2026-05-28 — Batch 2: 5个Agent节点（Task 6-10）
+
+### Planner Agent
+- 创建 `backend/agents/planner.py`，`async def run_planner(state, mock=True)`
+- Mock 模式：2秒延迟，3条预置搜索查询（含 `{product}` 模板替换）
+- 真实模式：调用 `get_llm(temperature=0.3)` 生成3-5条搜索关键词 + 分析计划
+- 使用 `safe_parse_json` 解析 LLM 返回
+- 使用 `publish()` 推送 `AgentStartEvent` / `AgentCompleteEvent`（SSE 进度通知）
+
+### Research Agent
+- 创建 `backend/agents/research.py`，`async def run_research(state, mock=True)`
+- Mock 模式：2秒延迟，3条预置研究结果（标题/URL/内容/相关性分数）
+- 真实模式：使用 `ToolRouter(task_id).call_sync("tavily_search", ...)` 逐条执行搜索查询
+- 基于 `seen_urls` 集合去重，`try/except` 容错
+
+### Analysis Agent
+- 创建 `backend/agents/analysis.py`，`async def run_analysis(state, mock=True)`
+- 仅 mock 模式实现，真实模式退回 mock 数据
+- 输出包含 8 条 SWOT 分析项（strength/weakness/opportunity/threat 各 2 条）+ 5 个竞品名称
+
+### Writer Agent
+- 创建 `backend/agents/writer.py`，`async def run_writer(state, mock=True)`
+- Mock 模式：2秒延迟，中文 Markdown 报告模板（含执行摘要/竞品全景/SWOT 表格/战略建议/信息来源）
+- 真实模式：调用 `get_llm(temperature=0.4)`，以 `raw_research` 前 8 条为上下文生成报告
+- 提示词要求中文 Markdown，6 段固定结构，注明"基于公开信息推断"
+
+### Reviewer Agent
+- 创建 `backend/agents/reviewer.py`，`async def run_reviewer(state, mock=True)`
+- 仅 mock 模式实现，返回固定质量评分 0.85 + 反馈文本
+
+### 关键适配
+- 所有 Agent 使用 `async def`（而非 spec 中的 sync def），因为 `publish()` 是 async 函数
+- `publish(task_id, event)` 调用使用 typed `SSEEvent` 对象（`AgentStartEvent` / `AgentCompleteEvent`），而非 spec 中的 `(str, str, dict)` 模式
+- 所有 5 个 Agent 的 mock 模式端到端冒烟测试通过
+
 ## 2026-05-28 — Batch 1 后端基础设施（Task 1-5）
 
 ### AnalysisState 数据总线
