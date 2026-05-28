@@ -87,6 +87,10 @@ class Task(Base):
         back_populates="task", lazy="selectin", order_by="ExecutionLog.id"
     )
 
+    @property
+    def report_id(self) -> str | None:
+        return self.report.id if self.report else None
+
     def __repr__(self) -> str:
         return f"<Task {self.id!r} {self.status.value!r}>"
 

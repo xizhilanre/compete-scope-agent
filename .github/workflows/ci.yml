@@ -56,6 +56,12 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           pip install pytest pytest-cov pytest-asyncio httpx
+      - name: Run DB migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/competescope
+          PYTHONPATH: ..
       - name: Test
         run: pytest backend/ --cov=backend --cov-report=xml -v
         env:

@@ -1,5 +1,190 @@
 # xizhilanre 开发日志
 
+## 2026-05-28 — MVP 验证、Bug 修复与 LLM 真实模式对接
+
+### 数据库：Supabase → 本地 PostgreSQL
+- Supabase 云端 IPv6 DNS 解析失败（Windows getaddrinfo），切换回本地 PostgreSQL
+- `.env` `DATABASE_URL` 指向 `localhost:5432/competescope`，移除 Supabase URL
+- 尝试过 SOCKS5 隧道 + IPv6 DNS 解析方案，最终放弃（本地 DB 不依赖外部网络）
+- `database.py` 恢复为原始简洁版本
+- `alembic upgrade head` 本地建表成功
+
+### Python 3.11 兼容修复
+- `backend/schemas/base.py`: `class Envelope[T]` PEP 695 泛型 → `class Envelope(BaseModel, Generic[T])`
+- `backend/schemas/report.py`: `metric_cards`/`citations`/`swot`/`token_usage` 改为 nullable
+- 原因：系统仅有 Python 3.11.9，winget 安装 3.12 因证书问题失败
+
+### 前端路由修复
+- **Dashboard 路由冲突**：`(workspace)/page.tsx` 与根 `page.tsx` 同在 `/` 路径
+  - `(workspace)/page.tsx` → `(workspace)/dashboard/page.tsx`
+  - Sidebar Dashboard 链接：`/` → `/dashboard`
+- **首页 404 错误**：旧 `useAnalysis` hook 调用 `/api/analyze/start`（不存在）
+  - 重写首页为 `POST /api/tasks` → 跳转 `/tasks/{id}`
+  - 首页作为快速入口，Dashboard 作为完整工作台
+
+### 报告显示链路修复（核心 Bug）
+- **问题**：DAG 完成后前端收不到报告 — `task_id ≠ report_id`
+- **根因**：`TaskCompleteEvent` 未携带 `report_id`，前端拿 task_id 去查 /api/reports/{id} 返回 404
+- **修复**：
+  - `runtime.py`: `create_report()` 返回值 → `TaskCompleteEvent(report_id=report.id)`
+  - `Task` ORM: 新增 `report_id` property（访问 `self.report.id`）
+  - `TaskResponse` schema: 新增 `report_id: str | None` 字段
+  - `TaskDetailPage`: 先 GET /api/tasks/{id} 查状态，已完成则直接跳转 /reports/{report_id}
+
+### LLM 真实模式验证
+- 切换 `COMPETESCOPE_MOCK=false`，3 节点 DAG (Planner→Research→Writer)
+- DeepSeek API (deepseek-chat) 正常调用，Tavily Search 连通
+- 输入 "Linear" → 3238 字中文 Markdown 报告（SWOT + 竞品全景表格 + 定价策略）
+- 耗时约 40s（Planner ~5s + Research ~15s + Writer ~15-20s）
+
+### 前端全量页面状态
+- `/` — 首页（快速任务入口 + Dashboard/API 文档链接）
+- `/dashboard` — 任务列表（Sidebar 布局 + TaskCard 网格）
+- `/tasks/new` — 新建任务表单（5 维度多选）
+- `/tasks/{id}` — 任务详情（DAGVisualizer + SSE 实时状态）
+- `/reports/{id}` — 报告阅读（react-markdown + 质量评分标签）
+- `/test-sse` — SSE 冒烟测试页
+
+## 2026-05-28 — Day 3: 真实 LLM 验证 (Task 17-20)
+
+### Task 17: 环境变量开关
+- `backend/config.py` 新增 `COMPETESCOPE_MOCK: bool = True` 配置项
+- `backend/core/runtime.py` 改为从 `settings.COMPETESCOPE_MOCK` 读取模式
+- `.env.example` 添加该配置说明（mock=true 5节点模拟 / false 3节点真实）
+
+### Task 18: Planner 真实模式验证
+- DeepSeek API 配置正确（base_url=https://api.deepseek.com/v1, model=deepseek-chat）
+- 输入 "Notion" → 生成 5 条英文搜索关键词（含 2025-2026 年份）+ 中文分析计划
+- safe_parse_json 解析成功
+
+### Task 19: Research + Writer 端到端验证
+- Tavily Search 连通：5 条查询 × 3 结果 = 15 条去重研究数据
+- Writer 基于研究结果生成 3293 字中文 Markdown 报告
+- 报告包含：执行摘要、竞品全景表格、SWOT 分析、战略建议、信息来源
+- DeepSeek 生成内容为真实竞品分析，非硬编码占位符
+
+### Task 20: DB 阻塞
+- Supabase 云端数据库连不上（DNS 解析失败，可能网络限制）
+- 前端浏览器全流程需 DB 可用，暂未测试
+- 代码层面 3 节点真实 DAG 已验证通过
+
+### 环境变量状态
+- DeepSeek API Key: 已配置 ✅
+- Tavily API Key: 已配置 ✅
+- Supabase DB: DNS 不通 ⚠️
+
+## 2026-05-28 — Day 2: 前端全栈实现 (Task 13-16)
+
+### Task 13: 工作台布局 + Sidebar
+- 创建 `(workspace)/layout.tsx`，所有工作台页面统一的 Sidebar + 内容区布局
+- Sidebar 组件：CompeteScope 品牌标识、Dashboard/新建任务 导航、v0.1.0 版本号
+- 安装 react-markdown 依赖
+
+### Task 14: Dashboard + TaskCard
+- Dashboard 页面：挂载时 GET /api/tasks 拉取列表，2 列网格展示
+- TaskCard 组件：状态彩色标签（PENDING/RUNNING/COMPLETED/FAILED）、相对时间显示
+
+### Task 15: 创建任务表单
+- 目标产品输入框 + 5 个分析维度按钮（支持多选，默认勾选 SWOT）
+- POST /api/tasks → 201 后跳转 /tasks/{id}
+
+### Task 16: 任务详情 + DAGVisualizer + 报告页
+- 任务详情页：EventSource SSE 监听，实时更新 DAG 节点状态，完成后自动跳转报告
+- DAGVisualizer：纯 SVG 实现，5/3 节点纵向排列，waiting/running/completed/failed 四态颜色
+- ReportViewer：react-markdown 渲染，dark prose 样式
+- 报告页：GET /api/reports/{id} + 质量评分展示
+
+## 2026-05-28 — Day 1: DAG 组装 + 路由改造 (Task 11-12)
+
+### Task 11: DAG 工作流 + Runtime
+- `backend/core/workflow.py`：build_dag(mock) 根据模式选择 5 节点（mock）或 3 节点（real）
+- `backend/core/runtime.py`：get_initial_state() + run_dag() 异步调度
+- run_dag 作为 FastAPI BackgroundTask 运行：更新状态 → 推送 SSE → 执行 DAG → 保存报告
+
+### Task 12: 路由改造 + CLI 测试
+- tasks.py：POST 切 create_task + BackgroundTask(run_dag)，GET 切 CRUD 真实查询
+- reports.py：GET 切 get_report 真实查询
+- schemas/task.py：analysis_dimensions 从 dict 改为 list[str]
+- test_pipeline.py：CLI 端到端测试脚本
+
+## 2026-05-28 — Task 16: 任务详情页 + DAGVisualizer + 报告页
+
+### Task Detail Page (tasks/[id]/page.tsx)
+- 新建 `(workspace)/tasks/[id]/page.tsx`，监听 SSE 事件 (`agent_start`, `agent_complete`, `task_start`, `task_complete`, `task_failed`)
+- 使用 `EventSource` 连接后端 `/api/analyze/{id}/stream`，实时更新 Agent 状态
+- 任务完成后自动跳转至报告页
+
+### DAGVisualizer (components/dag/DAGVisualizer.tsx)
+- 纯 SVG 实现，按顺序纵向排列 5 个 Agent 节点，支持 waiting / running / completed / failed 四种状态
+- 运行中节点显示对应颜色边框 + pulse 动画，已完成显示绿色 + 勾号，失败显示红色 + 叉号
+- 节点间以竖线连接表示流水线顺序
+
+### ReportViewer (components/report/ReportViewer.tsx)
+- 使用 `react-markdown` 渲染 Markdown 内容，采用 dark theme prose 样式
+
+### Report Page (reports/[id]/page.tsx)
+- 通过 `apiFetch` 调用 `/api/reports/{id}` 获取报告数据
+- 显示质量评分（百分比）和 markdown 内容
+
+## 2026-05-28 — Batch 2: 5个Agent节点（Task 6-10）
+
+### Planner Agent
+- 创建 `backend/agents/planner.py`，`async def run_planner(state, mock=True)`
+- Mock 模式：2秒延迟，3条预置搜索查询（含 `{product}` 模板替换）
+- 真实模式：调用 `get_llm(temperature=0.3)` 生成3-5条搜索关键词 + 分析计划
+- 使用 `safe_parse_json` 解析 LLM 返回
+- 使用 `publish()` 推送 `AgentStartEvent` / `AgentCompleteEvent`（SSE 进度通知）
+
+### Research Agent
+- 创建 `backend/agents/research.py`，`async def run_research(state, mock=True)`
+- Mock 模式：2秒延迟，3条预置研究结果（标题/URL/内容/相关性分数）
+- 真实模式：使用 `ToolRouter(task_id).call_sync("tavily_search", ...)` 逐条执行搜索查询
+- 基于 `seen_urls` 集合去重，`try/except` 容错
+
+### Analysis Agent
+- 创建 `backend/agents/analysis.py`，`async def run_analysis(state, mock=True)`
+- 仅 mock 模式实现，真实模式退回 mock 数据
+- 输出包含 8 条 SWOT 分析项（strength/weakness/opportunity/threat 各 2 条）+ 5 个竞品名称
+
+### Writer Agent
+- 创建 `backend/agents/writer.py`，`async def run_writer(state, mock=True)`
+- Mock 模式：2秒延迟，中文 Markdown 报告模板（含执行摘要/竞品全景/SWOT 表格/战略建议/信息来源）
+- 真实模式：调用 `get_llm(temperature=0.4)`，以 `raw_research` 前 8 条为上下文生成报告
+- 提示词要求中文 Markdown，6 段固定结构，注明"基于公开信息推断"
+
+### Reviewer Agent
+- 创建 `backend/agents/reviewer.py`，`async def run_reviewer(state, mock=True)`
+- 仅 mock 模式实现，返回固定质量评分 0.85 + 反馈文本
+
+### 关键适配
+- 所有 Agent 使用 `async def`（而非 spec 中的 sync def），因为 `publish()` 是 async 函数
+- `publish(task_id, event)` 调用使用 typed `SSEEvent` 对象（`AgentStartEvent` / `AgentCompleteEvent`），而非 spec 中的 `(str, str, dict)` 模式
+- 所有 5 个 Agent 的 mock 模式端到端冒烟测试通过
+
+## 2026-05-28 — Batch 1 后端基础设施（Task 1-5）
+
+### AnalysisState 数据总线
+- 创建 `backend/core/state.py`，定义 `AnalysisState` TypedDict
+- 包含 5 个 Agent 之间共享的全部字段（输入、Planner/Research/Analysis/Writer/Reviewer 输出、运行时跟踪）
+- `execution_logs` 使用 `Annotated[list[dict], operator.add]` 支持 LangGraph reduce
+
+### LLM 调用封装
+- 创建 `backend/core/llm.py`，提供 `get_llm()` 和 `safe_parse_json()`
+- `get_llm` 从 `backend.config.settings` 读取配置，仅当 base_url 非空时传入
+- `safe_parse_json` 按优先级尝试 4 种策略：直接 json.loads、代码块正则、首尾大括号、返回空 dict
+
+### Tavily 搜索封装
+- 创建 `backend/tools/tavily_search.py`，提供 `tavily_search_sync()`
+- 使用 `httpx.Client` 同步调用 Tavily API，返回规范化结果列表
+
+### ToolRouter 工具注册器
+- 创建 `backend/tools/registry.py`，实现 `ToolRouter` 类
+- `call_sync` 按工具名分发，自动计时并记录调用日志
+
+### 数据库 CRUD 层
+- 创建 `backend/db/crud.py`，6 个异步 CRUD 函数
+- create/get/list Task + update_task_status + create/get Report
+
 ## 2026-05-24 — GitHub 仓库初始化与规范化配置
 
 ### 仓库创建

@@ -1,91 +1,64 @@
-"""Task routes — CRUD the analysis job lifecycle.
+"""Task routes -- CRUD the analysis job lifecycle.
 
-MOCK DATA — all endpoints return static fixtures.
-Replace with real DB queries after wiring up the repository layer.
+All endpoints are wired to the real database layer and the DAG runtime.
 """
 
-from datetime import UTC
-from datetime import datetime
-
 from fastapi import APIRouter
+from fastapi import BackgroundTasks
+from fastapi import Depends
 from fastapi import Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.schemas.base import Envelope
+from backend.core.runtime import run_dag
+from backend.db.crud import create_task as create_task_db
+from backend.db.crud import get_task
+from backend.db.crud import list_tasks as list_tasks_crud
+from backend.db.database import get_db
 from backend.schemas.base import err
 from backend.schemas.base import ok
 from backend.schemas.task import TaskCreateRequest
 from backend.schemas.task import TaskListResponse
 from backend.schemas.task import TaskResponse
-from backend.schemas.task import TaskStatusEnum
 
 router = APIRouter(tags=["tasks"], prefix="/tasks")
 
-# ---------------------------------------------------------------------------
-# Mock data
-# ---------------------------------------------------------------------------
 
-_MOCK_TASK = TaskResponse(
-    id="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-    target_product="Notion",
-    analysis_dimensions={"pricing": True, "features": True, "ux": True, "market": True},
-    status=TaskStatusEnum.COMPLETED,
-    created_at=datetime(2026, 5, 24, 10, 0, 0, tzinfo=UTC),
-    updated_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=UTC),
-    started_at=datetime(2026, 5, 24, 10, 0, 1, tzinfo=UTC),
-    completed_at=datetime(2026, 5, 24, 10, 9, 30, tzinfo=UTC),
-    error=None,
-)
-
-_MOCK_TASKS = [
-    _MOCK_TASK,
-    TaskResponse(
-        id="b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
-        target_product="Figma",
-        analysis_dimensions={"pricing": True, "features": True, "ux": True, "market": False},
-        status=TaskStatusEnum.RUNNING,
-        created_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=UTC),
-        updated_at=datetime(2026, 5, 24, 11, 2, 0, tzinfo=UTC),
-        started_at=datetime(2026, 5, 24, 11, 0, 0, tzinfo=UTC),
-        completed_at=None,
-        error=None,
-    ),
-]
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
-
-@router.post("", response_model=Envelope[TaskResponse], status_code=201)
-async def create_task(body: TaskCreateRequest) -> Envelope[TaskResponse]:
-    """Create a new competitive analysis task."""
-    task = TaskResponse(
-        id="c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
-        target_product=body.target_product,
-        analysis_dimensions=body.analysis_dimensions,
-        status=TaskStatusEnum.PENDING,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-        started_at=None,
-        completed_at=None,
-        error=None,
+@router.post("", status_code=201)
+async def create_task(
+    body: TaskCreateRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new competitive analysis task and enqueue it for execution."""
+    task = await create_task_db(db, body.target_product, body.analysis_dimensions)
+    background_tasks.add_task(
+        run_dag, task.id, task.target_product, task.analysis_dimensions  # type: ignore[arg-type]
     )
-    return ok(task)
+    return ok(TaskResponse.model_validate(task))
 
 
-@router.get("", response_model=Envelope[TaskListResponse])
+@router.get("")
 async def list_tasks(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-) -> Envelope[TaskListResponse]:
-    """List analysis tasks with pagination."""
-    page = _MOCK_TASKS[skip : skip + limit]
-    return ok(TaskListResponse(total=len(_MOCK_TASKS), skip=skip, limit=limit, items=page))
+    db: AsyncSession = Depends(get_db),
+):
+    """List analysis tasks with pagination (newest first)."""
+    items, total = await list_tasks_crud(db, skip, limit)
+    return ok(
+        TaskListResponse(
+            total=total,
+            skip=skip,
+            limit=limit,
+            items=[TaskResponse.model_validate(t) for t in items],
+        )
+    )
 
 
-@router.get("/{task_id}", response_model=Envelope[TaskResponse])
-async def get_task(task_id: str) -> Envelope[TaskResponse]:
-    """Get a single task by ID."""
-    if task_id == _MOCK_TASK.id:
-        return ok(_MOCK_TASK)
-    return err(f"Task {task_id!r} not found")  # type: ignore[return-value]
+@router.get("/{task_id}")
+async def get_task_route(task_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a single task by its hex ID."""
+    task = await get_task(db, task_id)
+    if not task:
+        return err("任务不存在")
+    return ok(TaskResponse.model_validate(task))

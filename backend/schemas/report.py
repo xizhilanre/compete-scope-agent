@@ -55,10 +55,10 @@ class ReportResponse(BaseModel):
     task_target_product: str = Field(default="", description="Denormalised for convenience")
     markdown_content: str | None = None
     structured_data: dict | None = None
-    swot: list[SWOTItem] = Field(default_factory=list)
-    metric_cards: list[MetricCard] = Field(default_factory=list)
-    citations: list[CitationEntry] = Field(default_factory=list)
-    token_usage: TokenUsage | None = None
+    swot: list[SWOTItem] | None = None
+    metric_cards: list[MetricCard] | None = None
+    citations: list[CitationEntry] | None = None
+    token_usage: dict | None = None
     quality_score: float | None = None
     quality_feedback: str | None = None
     created_at: datetime
