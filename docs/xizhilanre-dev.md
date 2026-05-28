@@ -1,5 +1,65 @@
 # xizhilanre 开发日志
 
+## 2026-05-28 — Day 3: 环境变量开关 (Task 17)
+
+### COMPETESCOPE_MOCK 配置
+- `backend/config.py` 新增 `COMPETESCOPE_MOCK: bool = True` 配置项
+- `backend/core/runtime.py` 改为从 `settings.COMPETESCOPE_MOCK` 读取模式
+- `.env.example` 添加该配置说明（mock=true 5节点模拟 / false 3节点真实）
+
+## 2026-05-28 — Day 2: 前端全栈实现 (Task 13-16)
+
+### Task 13: 工作台布局 + Sidebar
+- 创建 `(workspace)/layout.tsx`，所有工作台页面统一的 Sidebar + 内容区布局
+- Sidebar 组件：CompeteScope 品牌标识、Dashboard/新建任务 导航、v0.1.0 版本号
+- 安装 react-markdown 依赖
+
+### Task 14: Dashboard + TaskCard
+- Dashboard 页面：挂载时 GET /api/tasks 拉取列表，2 列网格展示
+- TaskCard 组件：状态彩色标签（PENDING/RUNNING/COMPLETED/FAILED）、相对时间显示
+
+### Task 15: 创建任务表单
+- 目标产品输入框 + 5 个分析维度按钮（支持多选，默认勾选 SWOT）
+- POST /api/tasks → 201 后跳转 /tasks/{id}
+
+### Task 16: 任务详情 + DAGVisualizer + 报告页
+- 任务详情页：EventSource SSE 监听，实时更新 DAG 节点状态，完成后自动跳转报告
+- DAGVisualizer：纯 SVG 实现，5/3 节点纵向排列，waiting/running/completed/failed 四态颜色
+- ReportViewer：react-markdown 渲染，dark prose 样式
+- 报告页：GET /api/reports/{id} + 质量评分展示
+
+## 2026-05-28 — Day 1: DAG 组装 + 路由改造 (Task 11-12)
+
+### Task 11: DAG 工作流 + Runtime
+- `backend/core/workflow.py`：build_dag(mock) 根据模式选择 5 节点（mock）或 3 节点（real）
+- `backend/core/runtime.py`：get_initial_state() + run_dag() 异步调度
+- run_dag 作为 FastAPI BackgroundTask 运行：更新状态 → 推送 SSE → 执行 DAG → 保存报告
+
+### Task 12: 路由改造 + CLI 测试
+- tasks.py：POST 切 create_task + BackgroundTask(run_dag)，GET 切 CRUD 真实查询
+- reports.py：GET 切 get_report 真实查询
+- schemas/task.py：analysis_dimensions 从 dict 改为 list[str]
+- test_pipeline.py：CLI 端到端测试脚本
+
+## 2026-05-28 — Task 16: 任务详情页 + DAGVisualizer + 报告页
+
+### Task Detail Page (tasks/[id]/page.tsx)
+- 新建 `(workspace)/tasks/[id]/page.tsx`，监听 SSE 事件 (`agent_start`, `agent_complete`, `task_start`, `task_complete`, `task_failed`)
+- 使用 `EventSource` 连接后端 `/api/analyze/{id}/stream`，实时更新 Agent 状态
+- 任务完成后自动跳转至报告页
+
+### DAGVisualizer (components/dag/DAGVisualizer.tsx)
+- 纯 SVG 实现，按顺序纵向排列 5 个 Agent 节点，支持 waiting / running / completed / failed 四种状态
+- 运行中节点显示对应颜色边框 + pulse 动画，已完成显示绿色 + 勾号，失败显示红色 + 叉号
+- 节点间以竖线连接表示流水线顺序
+
+### ReportViewer (components/report/ReportViewer.tsx)
+- 使用 `react-markdown` 渲染 Markdown 内容，采用 dark theme prose 样式
+
+### Report Page (reports/[id]/page.tsx)
+- 通过 `apiFetch` 调用 `/api/reports/{id}` 获取报告数据
+- 显示质量评分（百分比）和 markdown 内容
+
 ## 2026-05-28 — Batch 2: 5个Agent节点（Task 6-10）
 
 ### Planner Agent
