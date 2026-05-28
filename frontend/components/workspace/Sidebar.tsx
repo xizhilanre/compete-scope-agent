@@ -42,4 +42,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-Claude opus4.7
