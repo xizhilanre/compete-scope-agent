@@ -1,11 +1,32 @@
 # xizhilanre 开发日志
 
-## 2026-05-28 — Day 3: 环境变量开关 (Task 17)
+## 2026-05-28 — Day 3: 真实 LLM 验证 (Task 17-20)
 
-### COMPETESCOPE_MOCK 配置
+### Task 17: 环境变量开关
 - `backend/config.py` 新增 `COMPETESCOPE_MOCK: bool = True` 配置项
 - `backend/core/runtime.py` 改为从 `settings.COMPETESCOPE_MOCK` 读取模式
 - `.env.example` 添加该配置说明（mock=true 5节点模拟 / false 3节点真实）
+
+### Task 18: Planner 真实模式验证
+- DeepSeek API 配置正确（base_url=https://api.deepseek.com/v1, model=deepseek-chat）
+- 输入 "Notion" → 生成 5 条英文搜索关键词（含 2025-2026 年份）+ 中文分析计划
+- safe_parse_json 解析成功
+
+### Task 19: Research + Writer 端到端验证
+- Tavily Search 连通：5 条查询 × 3 结果 = 15 条去重研究数据
+- Writer 基于研究结果生成 3293 字中文 Markdown 报告
+- 报告包含：执行摘要、竞品全景表格、SWOT 分析、战略建议、信息来源
+- DeepSeek 生成内容为真实竞品分析，非硬编码占位符
+
+### Task 20: DB 阻塞
+- Supabase 云端数据库连不上（DNS 解析失败，可能网络限制）
+- 前端浏览器全流程需 DB 可用，暂未测试
+- 代码层面 3 节点真实 DAG 已验证通过
+
+### 环境变量状态
+- DeepSeek API Key: 已配置 ✅
+- Tavily API Key: 已配置 ✅
+- Supabase DB: DNS 不通 ⚠️
 
 ## 2026-05-28 — Day 2: 前端全栈实现 (Task 13-16)
 
