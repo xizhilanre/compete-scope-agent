@@ -68,5 +68,6 @@ check_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["backend"]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "module"
+asyncio_default_test_loop_scope = "module"
 norecursedirs = [".venv", "node_modules", ".git"]
