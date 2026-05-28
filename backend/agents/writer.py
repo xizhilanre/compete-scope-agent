@@ -11,7 +11,9 @@ import asyncio
 from backend.api.routes.events import publish
 from backend.core.llm import get_llm
 from backend.core.state import AnalysisState
-from backend.schemas.events import AgentStartEvent, AgentCompleteEvent, iso_now
+from backend.schemas.events import AgentCompleteEvent
+from backend.schemas.events import AgentStartEvent
+from backend.schemas.events import iso_now
 
 MOCK_REPORT = """# {product} 竞品分析报告
 
@@ -80,7 +82,7 @@ async def run_writer(state: AnalysisState, mock: bool = True) -> dict:
             "注意：基于搜索结果写作，避免凭空编造。如果搜索结果不足，基于你对产品的了解补充，但注明是'基于公开信息推断'。"
         )
         resp = llm.invoke(prompt)
-        markdown = resp.content
+        markdown = resp.content  # type: ignore[assignment]
 
     await publish(
         task_id,

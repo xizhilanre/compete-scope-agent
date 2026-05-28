@@ -8,7 +8,9 @@ import asyncio
 
 from backend.api.routes.events import publish
 from backend.core.state import AnalysisState
-from backend.schemas.events import AgentStartEvent, AgentCompleteEvent, iso_now
+from backend.schemas.events import AgentCompleteEvent
+from backend.schemas.events import AgentStartEvent
+from backend.schemas.events import iso_now
 from backend.tools.registry import ToolRouter
 
 MOCK_RESEARCH = [
@@ -57,8 +59,8 @@ async def run_research(state: AnalysisState, mock: bool = True) -> dict:
         results = []
         for item in MOCK_RESEARCH:
             r = dict(item)
-            r["title"] = r["title"].format(product=product)
-            r["content"] = r["content"].format(product=product)
+            r["title"] = r["title"].format(product=product)  # type: ignore[attr-defined]
+            r["content"] = r["content"].format(product=product)  # type: ignore[attr-defined]
             results.append(r)
     else:
         router = ToolRouter(task_id)

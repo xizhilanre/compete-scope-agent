@@ -10,7 +10,8 @@ Two modes:
 
 import collections.abc as cabc
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END
+from langgraph.graph import StateGraph
 
 from backend.agents.analysis import run_analysis
 from backend.agents.planner import run_planner
@@ -35,7 +36,7 @@ def _node(fn: cabc.Callable[[_A], cabc.Awaitable[dict]], mock: bool):
     """
 
     async def wrapper(state: _A) -> dict:
-        return await fn(state, mock=mock)
+        return await fn(state, mock=mock)  # type: ignore[call-arg]
 
     return wrapper
 
@@ -95,4 +96,4 @@ def build_dag(mock: bool = True) -> StateGraph:
             ("writer", run_writer),
         ], mock=False)
 
-    return workflow.compile()
+    return workflow.compile()  # type: ignore[return-value]

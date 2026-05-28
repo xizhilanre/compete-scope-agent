@@ -6,14 +6,16 @@ operates on the ORM models defined in ``backend.db.models``.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC
+from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.models import Task, TaskStatus
 from backend.db.models import Report
-
+from backend.db.models import Task
+from backend.db.models import TaskStatus
 
 # ---------------------------------------------------------------------------
 # Task
@@ -89,7 +91,7 @@ async def update_task_status(
     task.status = status
     task.error = error
     if status == TaskStatus.COMPLETED:
-        task.completed_at = datetime.now(timezone.utc)
+        task.completed_at = datetime.now(UTC)
 
     await db.commit()
 

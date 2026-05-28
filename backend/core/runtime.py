@@ -18,15 +18,14 @@ import logging
 from backend.api.routes.events import publish
 from backend.config import settings
 from backend.core.workflow import build_dag
-from backend.db.crud import create_report, update_task_status
+from backend.db.crud import create_report
+from backend.db.crud import update_task_status
 from backend.db.database import async_session
 from backend.db.models import TaskStatus
-from backend.schemas.events import (
-    TaskCompleteEvent,
-    TaskFailedEvent,
-    TaskStartEvent,
-    iso_now,
-)
+from backend.schemas.events import TaskCompleteEvent
+from backend.schemas.events import TaskFailedEvent
+from backend.schemas.events import TaskStartEvent
+from backend.schemas.events import iso_now
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +91,7 @@ async def run_dag(
                 ),
             )
 
-            final_state = await dag.ainvoke(initial_state)
+            final_state = await dag.ainvoke(initial_state)  # type: ignore[attr-defined]
 
             report = await create_report(
                 db,

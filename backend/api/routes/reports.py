@@ -3,12 +3,14 @@
 Endpoints are wired to the real database layer.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.crud import get_report
 from backend.db.database import get_db
-from backend.schemas.base import err, ok
+from backend.schemas.base import err
+from backend.schemas.base import ok
 from backend.schemas.report import ReportResponse
 
 router = APIRouter(tags=["reports"], prefix="/reports")

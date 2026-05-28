@@ -5,8 +5,9 @@ Every agent node reads from and writes to this TypedDict as it passes
 through the DAG.  Fields are grouped by producer agent.
 """
 
-from typing import Annotated, Optional, TypedDict
 import operator
+from typing import Annotated
+from typing import TypedDict
 
 
 class AnalysisState(TypedDict):
@@ -23,11 +24,11 @@ class AnalysisState(TypedDict):
     raw_research: list[dict]
 
     # ---- Analysis 输出 ----
-    structured_analysis: Optional[dict]
+    structured_analysis: dict | None
 
     # ---- Writer 输出 ----
     final_report_markdown: str
-    metric_cards: Optional[dict]
+    metric_cards: dict | None
 
     # ---- Reviewer 输出 ----
     quality_score: float
@@ -39,4 +40,4 @@ class AnalysisState(TypedDict):
     token_usage: dict
     llm_call_count: int
     status: str
-    error: Optional[str]
+    error: str | None

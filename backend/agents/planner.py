@@ -7,9 +7,12 @@ in real mode it calls the LLM via ``get_llm``.
 import asyncio
 
 from backend.api.routes.events import publish
-from backend.core.llm import get_llm, safe_parse_json
+from backend.core.llm import get_llm
+from backend.core.llm import safe_parse_json
 from backend.core.state import AnalysisState
-from backend.schemas.events import AgentStartEvent, AgentCompleteEvent, iso_now
+from backend.schemas.events import AgentCompleteEvent
+from backend.schemas.events import AgentStartEvent
+from backend.schemas.events import iso_now
 
 MOCK_SEARCH_QUERIES = [
     "{product} competitor analysis 2026",
@@ -42,7 +45,7 @@ async def run_planner(state: AnalysisState, mock: bool = True) -> dict:
             f' "analysis_plan": "简短分析计划"}}'
         )
         resp = llm.invoke(prompt)
-        result = safe_parse_json(resp.content)
+        result = safe_parse_json(resp.content)  # type: ignore[arg-type]
         queries = result.get(
             "search_queries",
             [

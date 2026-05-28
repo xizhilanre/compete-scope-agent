@@ -55,7 +55,7 @@ def safe_parse_json(raw: str) -> dict[str, Any]:
     raw_stripped = raw.strip()
     if raw_stripped:
         try:
-            return json.loads(raw_stripped)
+            return json.loads(raw_stripped)  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             pass
 
@@ -63,7 +63,7 @@ def safe_parse_json(raw: str) -> dict[str, Any]:
     m = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", raw, re.DOTALL)
     if m:
         try:
-            return json.loads(m.group(1).strip())
+            return json.loads(m.group(1).strip())  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             pass
 
@@ -72,7 +72,7 @@ def safe_parse_json(raw: str) -> dict[str, Any]:
     end = raw.rfind("}")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(raw[start : end + 1])
+            return json.loads(raw[start : end + 1])  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             pass
 

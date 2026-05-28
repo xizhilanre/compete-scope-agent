@@ -3,15 +3,22 @@
 All endpoints are wired to the real database layer and the DAG runtime.
 """
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter
+from fastapi import BackgroundTasks
+from fastapi import Depends
+from fastapi import Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.runtime import run_dag
 from backend.db.crud import create_task as create_task_db
-from backend.db.crud import get_task, list_tasks as list_tasks_crud
+from backend.db.crud import get_task
+from backend.db.crud import list_tasks as list_tasks_crud
 from backend.db.database import get_db
-from backend.schemas.base import err, ok
-from backend.schemas.task import TaskCreateRequest, TaskListResponse, TaskResponse
+from backend.schemas.base import err
+from backend.schemas.base import ok
+from backend.schemas.task import TaskCreateRequest
+from backend.schemas.task import TaskListResponse
+from backend.schemas.task import TaskResponse
 
 router = APIRouter(tags=["tasks"], prefix="/tasks")
 
@@ -25,7 +32,7 @@ async def create_task(
     """Create a new competitive analysis task and enqueue it for execution."""
     task = await create_task_db(db, body.target_product, body.analysis_dimensions)
     background_tasks.add_task(
-        run_dag, task.id, task.target_product, task.analysis_dimensions
+        run_dag, task.id, task.target_product, task.analysis_dimensions  # type: ignore[arg-type]
     )
     return ok(TaskResponse.model_validate(task))
 

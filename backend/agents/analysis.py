@@ -10,7 +10,9 @@ import asyncio
 
 from backend.api.routes.events import publish
 from backend.core.state import AnalysisState
-from backend.schemas.events import AgentStartEvent, AgentCompleteEvent, iso_now
+from backend.schemas.events import AgentCompleteEvent
+from backend.schemas.events import AgentStartEvent
+from backend.schemas.events import iso_now
 
 MOCK_ANALYSIS = {
     "swot": [
@@ -49,7 +51,7 @@ async def run_analysis(state: AnalysisState, mock: bool = True) -> dict:
             agent="analysis",
             timestamp=iso_now(),
             duration_ms=2000,
-            output_summary=f"生成了 {len(result.get('swot', []))} 条 SWOT 分析项",
+            output_summary=f"生成了 {len(result.get('swot', []))} 条 SWOT 分析项",  # type: ignore[arg-type]
         ),
     )
 
