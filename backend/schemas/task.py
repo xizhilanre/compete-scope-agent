@@ -29,8 +29,8 @@ class TaskCreateRequest(BaseModel):
         examples=["Notion"],
         description="Product name to analyze",
     )
-    analysis_dimensions: dict = Field(
-        default_factory=lambda: {"pricing": True, "features": True, "ux": True, "market": True},
+    analysis_dimensions: list[str] = Field(
+        default_factory=lambda: ["功能分析", "定价策略", "SWOT分析", "市场定位"],
         description="Dimensions to evaluate",
     )
 
@@ -42,7 +42,7 @@ class TaskCreateRequest(BaseModel):
 class TaskResponse(BaseModel):
     id: str
     target_product: str
-    analysis_dimensions: dict
+    analysis_dimensions: list
     status: TaskStatusEnum
     created_at: datetime
     updated_at: datetime
