@@ -16,6 +16,7 @@ FastAPI ``BackgroundTask``.  It:
 import logging
 
 from backend.api.routes.events import publish
+from backend.config import settings
 from backend.core.workflow import build_dag
 from backend.db.crud import create_report, update_task_status
 from backend.db.database import async_session
@@ -74,8 +75,7 @@ async def run_dag(
         analysis_dimensions: The dimensions to evaluate (e.g.
             ``["功能分析", "定价策略"]``).
     """
-    # For MVP, always mock mode. Day 3 will change to read from settings/env.
-    mock = True
+    mock = settings.COMPETESCOPE_MOCK
 
     dag = build_dag(mock=mock)
     initial_state = get_initial_state(task_id, target_product, analysis_dimensions)

@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str = ""
     FIRECRAWL_API_KEY: str = ""
 
+    # --- Mode ---
+    COMPETESCOPE_MOCK: bool = True
+
     # --- App ---
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: str = "http://localhost:3000"
