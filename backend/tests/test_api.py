@@ -1,8 +1,7 @@
 """Smoke tests for the FastAPI application."""
 
 import pytest
-from httpx import ASGITransport
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from backend.main import app
 
@@ -34,7 +33,7 @@ async def test_health(client: AsyncClient):
 async def test_create_task(client: AsyncClient):
     resp = await client.post(
         "/api/tasks",
-        json={"target_product": "Slack", "analysis_dimensions": ["功能分析", "定价策略"]},
+        json={"target_product": "Slack", "analysis_dimensions": ["SWOT", "features"]},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -52,9 +51,10 @@ async def test_list_tasks(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_report(client: AsyncClient):
-    resp = await client.get("/api/reports/r1p2o3r4t5")
+async def test_report_not_found(client: AsyncClient):
+    """Querying a non-existent report should return success=false."""
+    resp = await client.get("/api/reports/nonexistent-id")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["success"] is True
-    assert data["data"]["task_target_product"] == "Notion"
+    assert data["success"] is False
+    assert data["error"] == "报告不存在"
